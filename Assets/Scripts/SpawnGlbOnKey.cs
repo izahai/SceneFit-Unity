@@ -1,38 +1,70 @@
 using UnityEngine;
+using System.Collections;
+using IdyllicFantasyNature;
 
 public class SpawnGlbOnKey : MonoBehaviour
 {
-    [Range(1, 20)]
-    public int glbIndex = 1;
-    
-    [Header("GLB Settings")]
-    public string glbRelativePath = "Avatars/m1_light_1.glb";
-
     [Header("Spawn Settings")]
     public Vector3 spawnOffset = Vector3.zero;
+
+    [Header("Capture & Server")]
+    public PlayerImageCapture imageCapture;
+    public ApiGlbResolver serverResolver;
 
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.E))
         {
-            SpawnGLB(glbIndex);
-            ++glbIndex;
+            StartCoroutine(CaptureAndSpawnFromServer());
         }
     }
 
-    void SpawnGLB(int index)
+    IEnumerator CaptureAndSpawnFromServer()
     {
-        // 1. Create empty GameObject
-        GameObject glbObject = new GameObject($"GLB_{index}");
+        CameraMovement camMove = GetComponentInChildren<CameraMovement>();
+        if (camMove != null)
+            camMove.inputEnabled = false;
 
-        // 2. Position it at player
+        yield return null;
+        
+        // 1. Capture image at player position
+        string imagePath = imageCapture.CaptureImage();
+        if (string.IsNullOrEmpty(imagePath))
+            yield break;
+
+        if (camMove != null)
+            camMove.inputEnabled = true;
+
+        // 2. Send image to server → get GLB filename
+        string resolvedGlb = null;
+
+        yield return StartCoroutine(
+            serverResolver.ResolveGlbFromImage(imagePath, glbName =>
+            {
+                resolvedGlb = glbName;
+            })
+        );
+
+        if (string.IsNullOrEmpty(resolvedGlb))
+        {
+            Debug.LogWarning("No GLB returned from server.");
+            yield break;
+        }
+
+        // 3. Spawn GLB
+        SpawnGLB(resolvedGlb);
+    }
+
+    void SpawnGLB(string glbFileName)
+    {
+        GameObject glbObject = new GameObject($"GLB_{glbFileName}");
+
         glbObject.transform.SetPositionAndRotation(
             transform.position + spawnOffset,
             transform.rotation
         );
 
-        // 3. Add LocalGlbLoader component
         LocalGlbLoader loader = glbObject.AddComponent<LocalGlbLoader>();
-        loader.Init($"Avatars/m1_light_{index}.glb");
+        loader.Init($"Avatars/{glbFileName}");
     }
 }

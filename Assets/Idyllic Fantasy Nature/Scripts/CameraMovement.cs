@@ -11,6 +11,8 @@ namespace IdyllicFantasyNature
         // mouse rotation
         private float _xRotation;
         private float _yRotation;
+        public bool inputEnabled = true;
+
 
         [Tooltip("the parent of this object")]
         [SerializeField] private Transform _controller;
@@ -26,6 +28,8 @@ namespace IdyllicFantasyNature
         // Update is called once per frame
         void Update()
         {
+            if (!inputEnabled)
+                return;
             // get input of the mouse 
             float mouseX = Input.GetAxis("Mouse X") * _mouseSensity;
             float mouseY = Input.GetAxis("Mouse Y") * _mouseSensity;
