@@ -4,29 +4,32 @@ using System.IO;
 public class PlayerImageCapture : MonoBehaviour
 {
     [Header("Capture Settings")]
-    public Camera playerCamera;
+    public Camera captureCamera;
     public int imageWidth = 1024;
     public int imageHeight = 1024;
 
     public string CaptureImage()
     {
-        if (playerCamera == null)
+        if (captureCamera == null)
         {
-            Debug.LogError("Player camera not assigned.");
+            Debug.LogError("Capture camera not assigned.");
             return null;
         }
 
         RenderTexture rt = new RenderTexture(imageWidth, imageHeight, 24);
-        playerCamera.targetTexture = rt;
+
+        captureCamera.targetTexture = rt;
+        captureCamera.enabled = true;   // 👈 enable ONLY for capture
+        captureCamera.Render();
+
+        RenderTexture.active = rt;
 
         Texture2D image = new Texture2D(imageWidth, imageHeight, TextureFormat.RGB24, false);
-
-        playerCamera.Render();
-        RenderTexture.active = rt;
         image.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0);
         image.Apply();
 
-        playerCamera.targetTexture = null;
+        captureCamera.targetTexture = null;
+        captureCamera.enabled = false;  // 👈 disable immediately
         RenderTexture.active = null;
         Destroy(rt);
 
@@ -34,15 +37,16 @@ public class PlayerImageCapture : MonoBehaviour
         Destroy(image);
 
         string directory = Path.Combine(Application.persistentDataPath, "Captures");
-        if (!Directory.Exists(directory))
-            Directory.CreateDirectory(directory);
+        Directory.CreateDirectory(directory);
 
-        string filename = $"capture_{System.DateTime.Now:yyyyMMdd_HHmmss}.png";
-        string fullPath = Path.Combine(directory, filename);
+        string path = Path.Combine(
+            directory,
+            $"capture_{System.DateTime.Now:yyyyMMdd_HHmmss}.png"
+        );
 
-        File.WriteAllBytes(fullPath, bytes);
+        File.WriteAllBytes(path, bytes);
+        Debug.Log($"Captured image: {path}");
 
-        Debug.Log($"Image captured at: {fullPath}");
-        return fullPath;
+        return path;
     }
 }
