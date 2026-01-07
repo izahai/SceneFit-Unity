@@ -5,8 +5,8 @@ public class PlayerImageCapture : MonoBehaviour
 {
     [Header("Capture Settings")]
     public Camera captureCamera;
-    public int imageWidth = 1024;
-    public int imageHeight = 1024;
+    public int imageWidth = 3840;
+    public int imageHeight = 2160;
 
     public string CaptureImage()
     {
