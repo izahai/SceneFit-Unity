@@ -11,10 +11,17 @@ public class SpawnGlbOnKey : MonoBehaviour
     public PlayerImageCapture imageCapture;
     public ApiGlbResolver serverResolver;
 
+    // Cached spawn transform
+    private Vector3 cachedSpawnPosition;
+    private Quaternion cachedSpawnRotation;
+
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.E))
         {
+            cachedSpawnPosition = transform.position + spawnOffset;
+            cachedSpawnRotation = transform.rotation;
+
             StartCoroutine(CaptureAndSpawnFromServer());
         }
     }
@@ -60,8 +67,8 @@ public class SpawnGlbOnKey : MonoBehaviour
         GameObject glbObject = new GameObject($"GLB_{glbFileName}");
 
         glbObject.transform.SetPositionAndRotation(
-            transform.position + spawnOffset,
-            transform.rotation
+            cachedSpawnPosition,
+            cachedSpawnRotation
         );
 
         LocalGlbLoader loader = glbObject.AddComponent<LocalGlbLoader>();
