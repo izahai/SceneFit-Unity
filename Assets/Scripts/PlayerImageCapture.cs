@@ -7,19 +7,29 @@ public class PlayerImageCapture : MonoBehaviour
     public Camera captureCamera;
     public int imageWidth = 3840;
     public int imageHeight = 2160;
+    private RenderTexture rt;
+
+    private void Awake()
+    {
+        if (captureCamera == null)
+        {
+            Debug.LogError("Capture camera not assigned.");
+            return;
+        }
+
+        rt = new RenderTexture(imageWidth, imageHeight, 24);
+        captureCamera.targetTexture = rt;
+        captureCamera.enabled = false; // never render to screen
+    }
 
     public string CaptureImage()
     {
-        if (captureCamera == null)
+        if (captureCamera == null || rt == null)
         {
             Debug.LogError("Capture camera not assigned.");
             return null;
         }
 
-        RenderTexture rt = new RenderTexture(imageWidth, imageHeight, 24);
-
-        captureCamera.targetTexture = rt;
-        captureCamera.enabled = true;   // 👈 enable ONLY for capture
         captureCamera.Render();
 
         RenderTexture.active = rt;
@@ -28,10 +38,7 @@ public class PlayerImageCapture : MonoBehaviour
         image.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0);
         image.Apply();
 
-        captureCamera.targetTexture = null;
-        captureCamera.enabled = false;  // 👈 disable immediately
         RenderTexture.active = null;
-        Destroy(rt);
 
         byte[] bytes = image.EncodeToPNG();
         Destroy(image);
@@ -48,5 +55,14 @@ public class PlayerImageCapture : MonoBehaviour
         Debug.Log($"Captured image: {path}");
 
         return path;
+    }
+
+    private void OnDestroy()
+    {
+        if (rt != null)
+        {
+            rt.Release();
+            rt = null;
+        }
     }
 }
