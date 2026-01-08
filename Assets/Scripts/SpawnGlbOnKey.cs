@@ -17,7 +17,7 @@ public class SpawnGlbOnKey : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.E))
+        if (Input.GetKeyDown(KeyCode.R))
         {
             cachedSpawnPosition = transform.position + spawnOffset;
             cachedSpawnRotation = transform.rotation;
