@@ -15,7 +15,7 @@ public class FloatingPanelController : MonoBehaviour
     [SerializeField] private KeyCode nextKey = KeyCode.R;
 
     [Header("Panel Texts")]
-    [SerializeField] private string[] texts = new string[] { "Baseline 1", "Baseline 2", "Baseline 3" };
+    private readonly string[] texts = new string[] { "Caption Matching", "Image Matching", "Tournament Selection"};
 
     private int currentIndex;
 

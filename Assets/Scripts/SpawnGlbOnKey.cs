@@ -6,6 +6,7 @@ public class SpawnGlbOnKey : MonoBehaviour
 {
     [Header("Spawn Settings")]
     public Vector3 spawnOffset = Vector3.zero;
+    public GameObject loadingPlaceholderPrefab;
 
     [Header("Capture & Server")]
     public PlayerImageCapture imageCapture;
@@ -14,6 +15,7 @@ public class SpawnGlbOnKey : MonoBehaviour
     // Cached spawn transform
     private Vector3 cachedSpawnPosition;
     private Quaternion cachedSpawnRotation;
+    private GameObject activeLoadingPlaceholder;
 
     void Update()
     {
@@ -28,6 +30,8 @@ public class SpawnGlbOnKey : MonoBehaviour
 
     IEnumerator CaptureAndSpawnFromServer()
     {
+        ShowLoadingPlaceholder();
+
         CameraMovement camMove = GetComponentInChildren<CameraMovement>();
         if (camMove != null)
             camMove.inputEnabled = false;
@@ -37,7 +41,10 @@ public class SpawnGlbOnKey : MonoBehaviour
         // 1. Capture image at player position
         string imagePath = imageCapture.CaptureImage();
         if (string.IsNullOrEmpty(imagePath))
+        {
+            HideLoadingPlaceholder();
             yield break;
+        }
 
         if (camMove != null)
             camMove.inputEnabled = true;
@@ -55,11 +62,14 @@ public class SpawnGlbOnKey : MonoBehaviour
         if (string.IsNullOrEmpty(resolvedGlb))
         {
             Debug.LogWarning("No GLB returned from server.");
+            HideLoadingPlaceholder();
             yield break;
         }
 
         // 3. Spawn GLB
         SpawnGLB(resolvedGlb);
+
+        HideLoadingPlaceholder();
     }
 
     void SpawnGLB(string glbFileName)
@@ -73,5 +83,29 @@ public class SpawnGlbOnKey : MonoBehaviour
 
         LocalGlbLoader loader = glbObject.AddComponent<LocalGlbLoader>();
         loader.Init($"Avatars/{glbFileName}");
+    }
+
+    private void ShowLoadingPlaceholder()
+    {
+        if (loadingPlaceholderPrefab == null)
+            return;
+
+        if (activeLoadingPlaceholder != null)
+            Destroy(activeLoadingPlaceholder);
+
+        activeLoadingPlaceholder = Instantiate(
+            loadingPlaceholderPrefab,
+            cachedSpawnPosition,
+            cachedSpawnRotation
+        );
+    }
+
+    private void HideLoadingPlaceholder()
+    {
+        if (activeLoadingPlaceholder != null)
+        {
+            Destroy(activeLoadingPlaceholder);
+            activeLoadingPlaceholder = null;
+        }
     }
 }
