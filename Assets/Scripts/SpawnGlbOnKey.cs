@@ -18,9 +18,9 @@ public class SpawnGlbOnKey : MonoBehaviour
     // Cached spawn transform
     private Vector3 cachedSpawnPosition;
     private Quaternion cachedSpawnRotation;
-    private readonly List<string> resolvedGlbs = new List<string>();
+    private List<string> resolvedGlbs = new List<string>();
     private int currentGlbIndex = -1;
-    private GameObject activeGlbObject;
+    private readonly List<GameObject> loadedGlbObjects = new List<GameObject>();
 
     void Update()
     {
@@ -44,7 +44,6 @@ public class SpawnGlbOnKey : MonoBehaviour
         if (camMove != null)
             camMove.inputEnabled = false;
 
-        bool wasPanelVisible = floatingPanel != null && floatingPanel.IsVisible();
         if (floatingPanel != null)
             floatingPanel.SetVisible(false);
 
@@ -54,23 +53,13 @@ public class SpawnGlbOnKey : MonoBehaviour
         
         // 1. Capture image at player position
         string imagePath = imageCapture.CaptureImage();
-        if (string.IsNullOrEmpty(imagePath))
-        {
-            if (floatingPanel != null)
-                floatingPanel.SetVisible(wasPanelVisible);
-            HideLoadingPlaceholder();
-            yield break;
-        }
 
         if (camMove != null)
             camMove.inputEnabled = true;
 
-        if (floatingPanel != null)
-            floatingPanel.SetVisible(wasPanelVisible);
-
         ShowLoadingPlaceholder();
 
-        // 2. Send image to server → get GLB filename
+        // 2. Send image to server → get the GLB filenames
         List<string> results = null;
 
         yield return StartCoroutine(
@@ -83,46 +72,23 @@ public class SpawnGlbOnKey : MonoBehaviour
         resolvedGlbs.Clear();
         if (results != null && results.Count > 0)
         {
-            resolvedGlbs.AddRange(results);
+            resolvedGlbs = new List<string>(results);
         }
 
         if (resolvedGlbs.Count == 0)
         {
             Debug.LogWarning("No GLB returned from server.");
             HideLoadingPlaceholder();
+            currentGlbIndex = -1;
             yield break;
         }
 
-        // 3. Spawn first GLB
+        // 3. Load all GLBs and show the first one
+        ClearLoadedGlbs();
+        LoadAllGlbs();
         currentGlbIndex = 0;
-        SpawnCurrentGlb();
-
+        UpdateVisibleGlb();
         HideLoadingPlaceholder();
-    }
-
-    void SpawnCurrentGlb()
-    {
-        if (currentGlbIndex < 0 || currentGlbIndex >= resolvedGlbs.Count)
-        {
-            return;
-        }
-
-        string glbFileName = resolvedGlbs[currentGlbIndex];
-
-        if (activeGlbObject != null)
-        {
-            Destroy(activeGlbObject);
-        }
-
-        activeGlbObject = new GameObject($"GLB_{glbFileName}");
-
-        activeGlbObject.transform.SetPositionAndRotation(
-            cachedSpawnPosition,
-            cachedSpawnRotation
-        );
-
-        LocalGlbLoader loader = activeGlbObject.AddComponent<LocalGlbLoader>();
-        loader.Init($"Avatars/{glbFileName}");
     }
 
     void ShowNextResolvedGlb()
@@ -133,7 +99,7 @@ public class SpawnGlbOnKey : MonoBehaviour
         }
 
         currentGlbIndex = (currentGlbIndex + 1) % resolvedGlbs.Count;
-        SpawnCurrentGlb();
+        UpdateVisibleGlb();
     }
 
     private void ShowLoadingPlaceholder()
@@ -155,5 +121,48 @@ public class SpawnGlbOnKey : MonoBehaviour
     {
         if (loadingPlaceholder != null)
             loadingPlaceholder.SetActive(false);
+    }
+
+    private void LoadAllGlbs()
+    {
+        for (int i = 0; i < resolvedGlbs.Count; i++)
+        {
+            string glbFileName = resolvedGlbs[i];
+            GameObject glbObject = new GameObject($"GLB_{glbFileName}");
+            glbObject.transform.SetPositionAndRotation(
+                cachedSpawnPosition,
+                cachedSpawnRotation
+            );
+
+            LocalGlbLoader loader = glbObject.AddComponent<LocalGlbLoader>();
+            loader.Init($"Avatars/{glbFileName}");
+            glbObject.SetActive(i == 0);
+            loadedGlbObjects.Add(glbObject);
+        }
+    }
+
+    private void UpdateVisibleGlb()
+    {
+        for (int i = 0; i < loadedGlbObjects.Count; i++)
+        {
+            bool isActive = i == currentGlbIndex;
+            if (loadedGlbObjects[i] != null)
+            {
+                loadedGlbObjects[i].SetActive(isActive);
+            }
+        }
+    }
+
+    private void ClearLoadedGlbs()
+    {
+        for (int i = 0; i < loadedGlbObjects.Count; i++)
+        {
+            if (loadedGlbObjects[i] != null)
+            {
+                Destroy(loadedGlbObjects[i]);
+            }
+        }
+
+        loadedGlbObjects.Clear();
     }
 }

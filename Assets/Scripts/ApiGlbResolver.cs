@@ -69,60 +69,8 @@ public class ApiGlbResolver : MonoBehaviour
             List<string> glbResults = new List<string>();
             glbResults = ParseAllMethodsResponse(json);
 
-            if (glbResults.Count == 0)
-            {
-                VlmSuggestedClothesResponse response =
-                    JsonUtility.FromJson<VlmSuggestedClothesResponse>(json);
-
-                if (response == null || response.results == null || response.results.Count == 0)
-                {
-                    Debug.LogWarning("No clothes returned from server.");
-                    onResult?.Invoke(null);
-                    yield break;
-                }
-
-                int count = Mathf.Min(topK, response.results.Count);
-                for (int i = 0; i < count; i++)
-                {
-                    ClothingResult r = response.results[i];
-                    string glbName = BuildGlbName(r.name_clothes);
-
-                    Debug.Log(
-                        $"Candidate {i}: {glbName} (score {r.similarity})"
-                    );
-
-                    glbResults.Add(glbName);
-                }
-            }
-
             onResult?.Invoke(glbResults);
         }
-    }
-
-    /// <summary>
-    /// Resolve a single GLB candidate from an input image.
-    /// </summary>
-    /// <param name="imagePath">Absolute path to image</param>
-    /// <param name="onResult">Callback with a GLB filename</param>
-    public IEnumerator ResolveGlbFromImage(
-        string imagePath,
-        System.Action<string> onResult
-    )
-    {
-        yield return ResolveTopGlbsFromImage(
-            imagePath,
-            1,
-            results =>
-            {
-                if (results == null || results.Count == 0)
-                {
-                    onResult?.Invoke(null);
-                    return;
-                }
-
-                onResult?.Invoke(results[0]);
-            }
-        );
     }
 
     private List<string> ParseAllMethodsResponse(string json)
@@ -134,22 +82,19 @@ public class ApiGlbResolver : MonoBehaviour
             return glbResults;
         }
 
-        if (response.approach_2 != null && response.approach_2.results != null)
-        {
-            string glbName = BuildGlbName(response.approach_2.results.name_clothes);
-            AddUnique(glbResults, glbName);
-        }
-
         if (response.approach_1 != null && response.approach_1.result != null)
         {
-            string glbName = BuildGlbName(response.approach_1.result.name_clothes);
-            AddUnique(glbResults, glbName);
+            glbResults.Add(BuildGlbName(response.approach_1.result.name_clothes));
         }
 
-        if (response.approach_3 != null && !string.IsNullOrEmpty(response.approach_3.best_clothes))
+        if (response.approach_2 != null && response.approach_2.result != null)
         {
-            string glbName = BuildGlbName(response.approach_3.best_clothes);
-            AddUnique(glbResults, glbName);
+            glbResults.Add(BuildGlbName(response.approach_2.result.name_clothes));
+        }
+
+        if (response.approach_3 != null && !string.IsNullOrEmpty(response.approach_3.result.name_clothes))
+        {
+            glbResults.Add(BuildGlbName(response.approach_3.result.name_clothes));
         }
 
         return glbResults;
@@ -170,46 +115,4 @@ public class ApiGlbResolver : MonoBehaviour
         string baseName = Path.GetFileNameWithoutExtension(rawName);
         return baseName + glbExtension;
     }
-
-    private void AddUnique(List<string> results, string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return;
-        }
-
-        if (!results.Contains(value))
-        {
-            results.Add(value);
-        }
-    }
-}
-
-[Serializable]
-public class AllMethodsResponse
-{
-    public ApproachOneResponse approach_1;
-    public ApproachTwoResponse approach_2;
-    public ApproachThreeResponse approach_3;
-}
-
-[Serializable]
-public class ApproachOneResponse
-{
-    public string[] query;
-    public ClothingResult result;
-}
-
-[Serializable]
-public class ApproachTwoResponse
-{
-    public string[] query;
-    public ClothingResult results;
-}
-
-[Serializable]
-public class ApproachThreeResponse
-{
-    public string background_caption;
-    public string best_clothes;
 }
