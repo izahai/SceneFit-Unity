@@ -5,6 +5,7 @@ public class PlayerImageCapture : MonoBehaviour
 {
     [Header("Capture Settings")]
     public Camera captureCamera;
+    public FloatingPanelController fpc;
     public int imageWidth = 3840;
     public int imageHeight = 2160;
     private RenderTexture rt;
@@ -29,6 +30,7 @@ public class PlayerImageCapture : MonoBehaviour
             Debug.LogError("Capture camera not assigned.");
             return null;
         }
+        fpc.SetVisible(false);
 
         captureCamera.Render();
 
@@ -54,6 +56,7 @@ public class PlayerImageCapture : MonoBehaviour
         File.WriteAllBytes(path, bytes);
         Debug.Log($"Captured image: {path}");
 
+        fpc.SetVisible(true);
         return path;
     }
 

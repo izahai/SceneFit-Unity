@@ -1,21 +1,26 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using IdyllicFantasyNature;
 
 public class SpawnGlbOnKey : MonoBehaviour
 {
     [Header("Spawn Settings")]
     public Vector3 spawnOffset = Vector3.zero;
-    public GameObject loadingPlaceholderPrefab;
+    public GameObject loadingPlaceholder;
+    public int maxCandidates = 3;
 
     [Header("Capture & Server")]
     public PlayerImageCapture imageCapture;
     public ApiGlbResolver serverResolver;
+    public FloatingPanelController floatingPanel;
 
     // Cached spawn transform
     private Vector3 cachedSpawnPosition;
     private Quaternion cachedSpawnRotation;
-    private GameObject activeLoadingPlaceholder;
+    private readonly List<string> resolvedGlbs = new List<string>();
+    private int currentGlbIndex = -1;
+    private GameObject activeGlbObject;
 
     void Update()
     {
@@ -26,15 +31,24 @@ public class SpawnGlbOnKey : MonoBehaviour
 
             StartCoroutine(CaptureAndSpawnFromServer());
         }
+
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            ShowNextResolvedGlb();
+        }
     }
 
     IEnumerator CaptureAndSpawnFromServer()
     {
-        ShowLoadingPlaceholder();
-
         CameraMovement camMove = GetComponentInChildren<CameraMovement>();
         if (camMove != null)
             camMove.inputEnabled = false;
+
+        bool wasPanelVisible = floatingPanel != null && floatingPanel.IsVisible();
+        if (floatingPanel != null)
+            floatingPanel.SetVisible(false);
+
+        HideLoadingPlaceholder();
 
         yield return null;
         
@@ -42,6 +56,8 @@ public class SpawnGlbOnKey : MonoBehaviour
         string imagePath = imageCapture.CaptureImage();
         if (string.IsNullOrEmpty(imagePath))
         {
+            if (floatingPanel != null)
+                floatingPanel.SetVisible(wasPanelVisible);
             HideLoadingPlaceholder();
             yield break;
         }
@@ -49,63 +65,95 @@ public class SpawnGlbOnKey : MonoBehaviour
         if (camMove != null)
             camMove.inputEnabled = true;
 
+        if (floatingPanel != null)
+            floatingPanel.SetVisible(wasPanelVisible);
+
+        ShowLoadingPlaceholder();
+
         // 2. Send image to server → get GLB filename
-        string resolvedGlb = null;
+        List<string> results = null;
 
         yield return StartCoroutine(
-            serverResolver.ResolveGlbFromImage(imagePath, glbName =>
+            serverResolver.ResolveTopGlbsFromImage(imagePath, maxCandidates, glbNames =>
             {
-                resolvedGlb = glbName;
+                results = glbNames;
             })
         );
 
-        if (string.IsNullOrEmpty(resolvedGlb))
+        resolvedGlbs.Clear();
+        if (results != null && results.Count > 0)
+        {
+            resolvedGlbs.AddRange(results);
+        }
+
+        if (resolvedGlbs.Count == 0)
         {
             Debug.LogWarning("No GLB returned from server.");
             HideLoadingPlaceholder();
             yield break;
         }
 
-        // 3. Spawn GLB
-        SpawnGLB(resolvedGlb);
+        // 3. Spawn first GLB
+        currentGlbIndex = 0;
+        SpawnCurrentGlb();
 
         HideLoadingPlaceholder();
     }
 
-    void SpawnGLB(string glbFileName)
+    void SpawnCurrentGlb()
     {
-        GameObject glbObject = new GameObject($"GLB_{glbFileName}");
+        if (currentGlbIndex < 0 || currentGlbIndex >= resolvedGlbs.Count)
+        {
+            return;
+        }
 
-        glbObject.transform.SetPositionAndRotation(
+        string glbFileName = resolvedGlbs[currentGlbIndex];
+
+        if (activeGlbObject != null)
+        {
+            Destroy(activeGlbObject);
+        }
+
+        activeGlbObject = new GameObject($"GLB_{glbFileName}");
+
+        activeGlbObject.transform.SetPositionAndRotation(
             cachedSpawnPosition,
             cachedSpawnRotation
         );
 
-        LocalGlbLoader loader = glbObject.AddComponent<LocalGlbLoader>();
+        LocalGlbLoader loader = activeGlbObject.AddComponent<LocalGlbLoader>();
         loader.Init($"Avatars/{glbFileName}");
+    }
+
+    void ShowNextResolvedGlb()
+    {
+        if (resolvedGlbs.Count == 0)
+        {
+            return;
+        }
+
+        currentGlbIndex = (currentGlbIndex + 1) % resolvedGlbs.Count;
+        SpawnCurrentGlb();
     }
 
     private void ShowLoadingPlaceholder()
     {
-        if (loadingPlaceholderPrefab == null)
+        if (loadingPlaceholder == null)
             return;
 
-        if (activeLoadingPlaceholder != null)
-            Destroy(activeLoadingPlaceholder);
-
-        activeLoadingPlaceholder = Instantiate(
-            loadingPlaceholderPrefab,
-            cachedSpawnPosition,
+        Vector3 placeholderPosition = cachedSpawnPosition;
+        placeholderPosition.y += 1.5f;
+        loadingPlaceholder.transform.SetPositionAndRotation(
+            placeholderPosition,
             cachedSpawnRotation
         );
+        loadingPlaceholder.transform.Rotate(0f, 90f, 90f, Space.Self);
+        loadingPlaceholder.SetActive(true);
     }
 
     private void HideLoadingPlaceholder()
     {
-        if (activeLoadingPlaceholder != null)
-        {
-            Destroy(activeLoadingPlaceholder);
-            activeLoadingPlaceholder = null;
-        }
+        if (loadingPlaceholder != null)
+            loadingPlaceholder.SetActive(false);
     }
 }

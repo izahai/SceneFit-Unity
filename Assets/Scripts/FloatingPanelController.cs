@@ -99,4 +99,14 @@ public class FloatingPanelController : MonoBehaviour
             panelRoot.SetActive(visible);
         }
     }
+
+    public void SetVisible(bool visible)
+    {
+        SetPanelVisible(visible);
+    }
+
+    public bool IsVisible()
+    {
+        return panelRoot != null && panelRoot.activeSelf;
+    }
 }
