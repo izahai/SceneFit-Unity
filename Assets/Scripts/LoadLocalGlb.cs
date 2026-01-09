@@ -9,6 +9,8 @@ public class LocalGlbLoader : MonoBehaviour
 {
     [HideInInspector]
     public string relativePath;
+    public bool DefaultVisible { get; set; } = true;
+    public GameObject AvatarRoot { get; private set; }
 
     public void Init(string glbPath)
     {
@@ -61,17 +63,16 @@ public class LocalGlbLoader : MonoBehaviour
         }
 
         Debug.Log($"[Running] Init GLB Avater from: {path}");
-        GameObject avatarRoot = new GameObject("GLB_Avatar");
-        await gltf.InstantiateMainSceneAsync(avatarRoot.transform);
-        ApplyPastelLook(avatarRoot);
+        AvatarRoot = new GameObject("GLB_Avatar");
+        AvatarRoot.transform.SetParent(transform, false);
+        await gltf.InstantiateMainSceneAsync(AvatarRoot.transform);
+        ApplyPastelLook(AvatarRoot);
         Debug.Log($"[Done] Init GLB Avater from: {path}");
 
-        avatarRoot.transform.SetPositionAndRotation(
-            transform.position,
-            transform.rotation
-        );
-
-        avatarRoot.transform.localScale = transform.localScale;
+        AvatarRoot.transform.localPosition = Vector3.zero;
+        AvatarRoot.transform.localRotation = Quaternion.identity;
+        AvatarRoot.transform.localScale = Vector3.one;
+        AvatarRoot.SetActive(DefaultVisible);
 
     }
 

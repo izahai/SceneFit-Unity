@@ -38,6 +38,22 @@ public class SpawnGlbOnKey : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        if (floatingPanel != null)
+        {
+            floatingPanel.NextClicked += ShowNextResolvedGlb;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (floatingPanel != null)
+        {
+            floatingPanel.NextClicked -= ShowNextResolvedGlb;
+        }
+    }
+
     IEnumerator CaptureAndSpawnFromServer()
     {
         CameraMovement camMove = GetComponentInChildren<CameraMovement>();
@@ -136,7 +152,7 @@ public class SpawnGlbOnKey : MonoBehaviour
 
             LocalGlbLoader loader = glbObject.AddComponent<LocalGlbLoader>();
             loader.Init($"Avatars/{glbFileName}");
-            glbObject.SetActive(i == 0);
+            loader.DefaultVisible = i == 0;
             loadedGlbObjects.Add(glbObject);
         }
     }
@@ -146,10 +162,28 @@ public class SpawnGlbOnKey : MonoBehaviour
         for (int i = 0; i < loadedGlbObjects.Count; i++)
         {
             bool isActive = i == currentGlbIndex;
-            if (loadedGlbObjects[i] != null)
+            GameObject glbObject = loadedGlbObjects[i];
+            if (glbObject == null)
+                continue;
+
+            LocalGlbLoader loader = glbObject.GetComponent<LocalGlbLoader>();
+            if (loader != null && loader.AvatarRoot != null)
             {
-                loadedGlbObjects[i].SetActive(isActive);
+                loader.AvatarRoot.SetActive(isActive);
             }
+        }
+    }
+
+    public void HideGlbAtIndex(int index)
+    {
+        if (index < 0 || index >= loadedGlbObjects.Count)
+        {
+            return;
+        }
+
+        if (loadedGlbObjects[index] != null)
+        {
+            loadedGlbObjects[index].SetActive(false);
         }
     }
 

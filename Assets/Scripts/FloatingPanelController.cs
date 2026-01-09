@@ -11,19 +11,20 @@ public class FloatingPanelController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI panelTextTMP;
 
     [Header("Input Keys")]
-    [SerializeField] private KeyCode toggleKey = KeyCode.M;
-    [SerializeField] private KeyCode nextKey = KeyCode.R;
+    [SerializeField] private KeyCode toggleKey = KeyCode.E;
+    [SerializeField] private KeyCode nextKey = KeyCode.F;
 
     [Header("Panel Texts")]
     private readonly string[] texts = new string[] { "Caption Matching", "Image Matching", "Tournament Selection"};
 
     private int currentIndex;
+    public event System.Action NextClicked;
 
     private void Awake()
     {
         if (nextButton != null)
         {
-            nextButton.onClick.AddListener(ShowNextText);
+            nextButton.onClick.AddListener(OnNextButtonClicked);
         }
 
         UpdateText();
@@ -69,6 +70,12 @@ public class FloatingPanelController : MonoBehaviour
 
         currentIndex = (currentIndex + 1) % texts.Length;
         UpdateText();
+    }
+
+    private void OnNextButtonClicked()
+    {
+        ShowNextText();
+        NextClicked?.Invoke();
     }
 
     private void UpdateText()
